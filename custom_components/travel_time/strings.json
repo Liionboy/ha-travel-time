@@ -1,0 +1,94 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Travel Time Setup",
+        "description": "Choose a routing provider and give your route a name.",
+        "data": {
+          "name": "Route Name",
+          "provider": "Routing Provider"
+        }
+      },
+      "ors_api_key": {
+        "title": "OpenRouteService API Key",
+        "description": "Enter your free API key from [openrouteservice.org](https://openrouteservice.org/dev/#/signup).",
+        "data": {
+          "api_key": "API Key"
+        }
+      },
+      "google_api_key": {
+        "title": "Google Maps API Key",
+        "description": "Enter your Google Maps API key with Directions API enabled.",
+        "data": {
+          "api_key": "API Key"
+        }
+      },
+      "ors_selfhost": {
+        "title": "Self-Hosted OpenRouteService",
+        "description": "Enter the URL of your self-hosted OpenRouteService instance.",
+        "data": {
+          "base_url": "Base URL",
+          "api_key": "API Key (optional)"
+        }
+      },
+      "origin": {
+        "title": "Origin",
+        "description": "Enter the origin coordinates.\n\nFormat: `{format}`",
+        "data": {
+          "origin": "Origin (lat, lon)"
+        }
+      },
+      "destination": {
+        "title": "Destination",
+        "description": "Enter the destination coordinates.\n\nFormat: `{format}`",
+        "data": {
+          "destination": "Destination (lat, lon)"
+        }
+      },
+      "options": {
+        "title": "Travel Options",
+        "description": "Configure travel mode and optional arrival/departure times.",
+        "data": {
+          "mode": "Travel Mode",
+          "arrival_time": "Arrival Time (optional)",
+          "departure_time": "Departure Time (optional)",
+          "update_interval": "Update Interval (seconds)"
+        }
+      },
+      "reauth": {
+        "title": "Update API Key",
+        "description": "Your API key is no longer valid. Please enter a new one.",
+        "data": {
+          "api_key": "New API Key"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid API key.",
+      "cannot_connect": "Cannot connect to the routing service.",
+      "invalid_location": "Invalid location format. Use: latitude, longitude"
+    },
+    "abort": {
+      "already_configured": "This route is already configured.",
+      "invalid_auth": "Authentication failed.",
+      "cannot_connect": "Cannot connect to the routing service.",
+      "reauth_successful": "API key updated successfully."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "duration": {
+        "name": "Duration"
+      },
+      "distance": {
+        "name": "Distance"
+      },
+      "arrival_time": {
+        "name": "Arrival Time"
+      },
+      "departure_time": {
+        "name": "Departure Time"
+      }
+    }
+  }
+}
