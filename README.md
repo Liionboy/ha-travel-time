@@ -26,13 +26,24 @@ A Home Assistant integration that calculates travel time between two locations u
 2. Create an API key
 3. Add the integration and select "Google Maps" as provider
 
+### OSRM (Free, No API Key)
+
+Uses the public [OSRM](http://project-osrm.org/) demo server. No registration needed.
+
+**Note:** The demo server may have rate limits and doesn't support traffic data.
+
 ### Self-Hosted OpenRouteService
 
-If you run your own [OpenRouteService](https://giscience.github.io/openrouteservice/) instance:
+Run your own [OpenRouteService](https://giscience.github.io/openrouteservice/) instance with Docker:
 
-1. Select "OpenRouteService (self-hosted)" as provider
-2. Enter your instance URL (e.g., `http://localhost:8080/ors`)
-3. Optionally enter an API key if your instance requires one
+```bash
+docker run -d -p 8080:8082 \
+  -v ./ors-data:/home/ors \
+  -e REBUILD_GRAPHS=True \
+  openrouteservice/openrouteservice:v9.9.0
+```
+
+Then select "OpenRouteService (self-hosted)" as provider and enter your instance URL (e.g., `http://192.168.1.9:8080/ors`).
 
 ## Sensors
 

@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Travel Time Setup",
-        "description": "Choose a routing provider and give your route a name.",
+        "description": "Choose a routing provider and give your route a name.\n\n**OSRM** is free and requires no API key.\n**OpenRouteService** requires a free API key from openrouteservice.org.\n**Google Maps** requires a Google Cloud API key with Directions API enabled.",
         "data": {
           "name": "Route Name",
           "provider": "Routing Provider"

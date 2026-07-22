@@ -52,11 +52,13 @@ from .const import (
     PROVIDER_GOOGLE,
     PROVIDER_ORS,
     PROVIDER_ORS_SELFHOST,
+    PROVIDER_OSRM,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 PROVIDERS = {
+    PROVIDER_OSRM: "OSRM (free, no API key)",
     PROVIDER_ORS: "OpenRouteService (free)",
     PROVIDER_GOOGLE: "Google Maps",
     PROVIDER_ORS_SELFHOST: "OpenRouteService (self-hosted)",
@@ -115,6 +117,8 @@ class TravelTimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_google_api_key()
             if provider == PROVIDER_ORS_SELFHOST:
                 return await self.async_step_ors_selfhost()
+            if provider == PROVIDER_OSRM:
+                return await self.async_step_origin()
 
             return await self.async_step_origin()
 
@@ -366,7 +370,7 @@ class TravelTimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         provider = self._data.get(CONF_PROVIDER, PROVIDER_ORS)
-        if provider in (PROVIDER_ORS, PROVIDER_ORS_SELFHOST):
+        if provider in (PROVIDER_ORS, PROVIDER_ORS_SELFHOST, PROVIDER_OSRM):
             modes = MODES_ORS
         else:
             modes = MODES_GOOGLE

@@ -18,6 +18,7 @@ from .const import (
     MODE_WALKING,
     ORS_BASE_URL,
     ORS_DIRECTIONS_PATH,
+    OSRM_BASE_URL,
     PROFILE_CYCLING_REGULAR,
     PROFILE_DRIVING_CAR,
     PROFILE_FOOT_WALKING,
@@ -264,6 +265,79 @@ class GoogleMapsProvider(BaseTravelTimeProvider):
         )
 
 
+class OSRMProvider(BaseTravelTimeProvider):
+    """OSRM (Open Source Routing Machine) provider - free, no API key."""
+
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        origin_lat: float,
+        origin_lon: float,
+        dest_lat: float,
+        dest_lon: float,
+        mode: str,
+        base_url: str = OSRM_BASE_URL,
+    ) -> None:
+        super().__init__(session, origin_lat, origin_lon, dest_lat, dest_lon, mode)
+        self._base_url = base_url.rstrip("/")
+
+    def _get_osrm_profile(self) -> str:
+        """Get OSRM profile from integration mode."""
+        profiles = {
+            MODE_DRIVING: "car",
+            MODE_WALKING: "foot",
+            MODE_BICYCLING: "bike",
+        }
+        return profiles.get(self._mode, "car")
+
+    async def async_get_travel_time(self) -> TravelTimeResult:
+        """Get travel time from OSRM."""
+        profile = self._get_osrm_profile()
+        # OSRM expects lon,lat format
+        coords = f"{self._origin_lon},{self._origin_lat};{self._dest_lon},{self._dest_lat}"
+        url = f"{self._base_url}/route/v1/{profile}/{coords}"
+
+        params = {
+            "overview": "false",
+            "alternatives": "false",
+            "steps": "false",
+        }
+
+        try:
+            resp = await self._session.get(url, params=params)
+        except aiohttp.ClientError as err:
+            raise TravelTimeConnectionError(f"Connection error: {err}") from err
+
+        if resp.status >= 400:
+            text = await resp.text()
+            raise TravelTimeError(f"OSRM API error {resp.status}: {text}")
+
+        data = await resp.json()
+
+        if data.get("code") != "Ok":
+            raise TravelTimeError(f"OSRM error: {data.get('code', 'unknown')}")
+
+        routes = data.get("routes", [])
+        if not routes:
+            raise TravelTimeError("No routes found")
+
+        route = routes[0]
+        duration = route.get("duration", 0)
+        distance = route.get("distance", 0)
+
+        origin_str = _format_coords(self._origin_lat, self._origin_lon)
+        dest_str = _format_coords(self._dest_lat, self._dest_lon)
+
+        return TravelTimeResult(
+            duration=duration,
+            duration_in_traffic=None,
+            distance=distance,
+            origin=origin_str,
+            destination=dest_str,
+            route=None,
+        )
+
+
 def create_provider(
     provider: str,
     session: aiohttp.ClientSession,
@@ -284,5 +358,10 @@ def create_provider(
     if provider == "google":
         return GoogleMapsProvider(
             session, origin_lat, origin_lon, dest_lat, dest_lon, mode, api_key
+        )
+    if provider == "osrm":
+        url = base_url if base_url else OSRM_BASE_URL
+        return OSRMProvider(
+            session, origin_lat, origin_lon, dest_lat, dest_lon, mode, url
         )
     raise TravelTimeError(f"Unknown provider: {provider}")

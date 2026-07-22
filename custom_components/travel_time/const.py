@@ -28,6 +28,7 @@ CONF_DEST_ENTITY_ID = "dest_entity_id"
 PROVIDER_ORS = "openrouteservice"
 PROVIDER_GOOGLE = "google"
 PROVIDER_ORS_SELFHOST = "openrouteservice_selfhost"
+PROVIDER_OSRM = "osrm"
 
 # Profile/mode values
 PROFILE_DRIVING_CAR = "driving-car"
@@ -62,6 +63,9 @@ ORS_DIRECTIONS_PATH = "/v2/directions"
 
 # Google Maps API
 GOOGLE_DIRECTIONS_URL = "https://maps.googleapis.com/maps/api/directions/json"
+
+# OSRM API (free, no API key)
+OSRM_BASE_URL = "https://router.project-osrm.org"
 
 # Attributes
 ATTR_DURATION = "duration"
