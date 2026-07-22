@@ -43,7 +43,7 @@ docker run -d -p 8080:8082 \
   openrouteservice/openrouteservice:v9.9.0
 ```
 
-Then select "OpenRouteService (self-hosted)" as provider and enter your instance URL (e.g., `http://192.168.1.9:8080/ors`).
+Then select "OpenRouteService (self-hosted)" as provider and enter your instance URL (e.g., `http://your-server:8080/ors`).
 
 ## Sensors
 
