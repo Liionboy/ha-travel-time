@@ -347,33 +347,34 @@ class TravelTimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._data.update(user_input)
 
-            # Validate with test request
-            session = async_get_clientsession(self.hass)
-            provider = create_provider(
-                self._data[CONF_PROVIDER],
-                session,
-                self._data[CONF_ORIGIN_LAT],
-                self._data[CONF_ORIGIN_LON],
-                self._data[CONF_DEST_LAT],
-                self._data[CONF_DEST_LON],
-                user_input.get(CONF_MODE, DEFAULT_MODE),
-                api_key=self._data.get(CONF_API_KEY, ""),
-                base_url=self._data.get(CONF_BASE_URL, ""),
-            )
-            try:
-                result = await provider.async_get_travel_time()
-                _LOGGER.info(
-                    "Travel time validation: %s → %s = %.0f seconds, %.0f meters",
-                    result.origin,
-                    result.destination,
-                    result.duration,
-                    result.distance,
+            # Validate with test request (skip for Waze - validated at runtime)
+            if self._data[CONF_PROVIDER] != PROVIDER_WAZE:
+                session = async_get_clientsession(self.hass)
+                provider = create_provider(
+                    self._data[CONF_PROVIDER],
+                    session,
+                    self._data[CONF_ORIGIN_LAT],
+                    self._data[CONF_ORIGIN_LON],
+                    self._data[CONF_DEST_LAT],
+                    self._data[CONF_DEST_LON],
+                    user_input.get(CONF_MODE, DEFAULT_MODE),
+                    api_key=self._data.get(CONF_API_KEY, ""),
+                    base_url=self._data.get(CONF_BASE_URL, ""),
                 )
-            except TravelTimeAuthError:
-                return self.async_abort(reason="invalid_auth")
-            except (TravelTimeConnectionError, TravelTimeError) as err:
-                _LOGGER.error("Travel time validation failed: %s", err)
-                return self.async_abort(reason="cannot_connect")
+                try:
+                    result = await provider.async_get_travel_time()
+                    _LOGGER.info(
+                        "Travel time validation: %s → %s = %.0f seconds, %.0f meters",
+                        result.origin,
+                        result.destination,
+                        result.duration,
+                        result.distance,
+                    )
+                except TravelTimeAuthError:
+                    return self.async_abort(reason="invalid_auth")
+                except (TravelTimeConnectionError, TravelTimeError) as err:
+                    _LOGGER.error("Travel time validation failed: %s", err)
+                    return self.async_abort(reason="cannot_connect")
 
             return self.async_create_entry(
                 title=self._data.get(CONF_NAME, DEFAULT_NAME),

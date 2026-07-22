@@ -307,7 +307,7 @@ class WazeProvider(BaseTravelTimeProvider):
         dest_lat: float,
         dest_lon: float,
         mode: str,
-        region: str = "RO",
+        region: str = "EU",
         avoid_toll_roads: bool = False,
         avoid_subscription_roads: bool = False,
         avoid_ferries: bool = False,
