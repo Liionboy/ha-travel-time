@@ -75,6 +75,37 @@ def _format_coords(lat: float, lon: float) -> str:
     return f"{abs(lat):.5f}°{lat_dir}, {abs(lon):.5f}°{lon_dir}"
 
 
+NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
+
+
+async def async_reverse_geocode(
+    session: aiohttp.ClientSession, lat: float, lon: float
+) -> str | None:
+    """Reverse geocode coordinates to a location name using Nominatim."""
+    params = {
+        "lat": str(lat),
+        "lon": str(lon),
+        "format": "json",
+        "zoom": "14",
+        "accept-language": "ro",
+    }
+    headers = {"User-Agent": "ha-travel-time/1.0"}
+    try:
+        resp = await session.get(NOMINATIM_URL, params=params, headers=headers)
+        if resp.status == 200:
+            data = await resp.json()
+            display = data.get("display_name", "")
+            if display:
+                # Simplify: take first 3 parts (city, county, country)
+                parts = [p.strip() for p in display.split(",")]
+                if len(parts) >= 3:
+                    return ", ".join(parts[:3])
+                return display
+    except Exception:
+        pass
+    return None
+
+
 class BaseTravelTimeProvider(ABC):
     """Base class for travel time providers."""
 

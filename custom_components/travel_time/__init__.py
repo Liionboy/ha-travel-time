@@ -50,6 +50,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         provider,
         timedelta(seconds=interval),
         entry.entry_id,
+        origin_lat=entry.data[CONF_ORIGIN_LAT],
+        origin_lon=entry.data[CONF_ORIGIN_LON],
+        dest_lat=entry.data[CONF_DEST_LAT],
+        dest_lon=entry.data[CONF_DEST_LON],
     )
 
     try:
