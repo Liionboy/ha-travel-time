@@ -57,13 +57,9 @@ async def async_setup_entry(
         TravelTimeDurationInTrafficSensor(coordinator, entry, name),
         TravelTimeOriginSensor(coordinator, entry, name),
         TravelTimeDestinationSensor(coordinator, entry, name),
+        TravelTimeArrivalSensor(coordinator, entry, name),
+        TravelTimeDepartureSensor(coordinator, entry, name),
     ]
-
-    # Only add arrival/departure time sensors if configured
-    if entry.data.get(CONF_ARRIVAL_TIME):
-        entities.append(TravelTimeArrivalSensor(coordinator, entry, name))
-    if entry.data.get(CONF_DEPARTURE_TIME):
-        entities.append(TravelTimeDepartureSensor(coordinator, entry, name))
 
     async_add_entities(entities)
 
@@ -238,44 +234,49 @@ class TravelTimeArrivalSensor(TravelTimeBaseSensor):
     def unique_id(self) -> str:
         return f"{self._entry.entry_id}_arrival"
 
+    def _get_target_time(self) -> datetime | None:
+        """Parse the configured arrival time."""
+        arrival_time_str = self._entry.data.get(CONF_ARRIVAL_TIME)
+        if not arrival_time_str:
+            return None
+        try:
+            parts = str(arrival_time_str).split(":")
+            target_hour = int(parts[0])
+            target_minute = int(parts[1]) if len(parts) > 1 else 0
+            now = datetime.now()
+            target = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+            if target < now:
+                target += timedelta(days=1)
+            return target
+        except (ValueError, IndexError, AttributeError):
+            return None
+
     @property
     def native_value(self) -> datetime | None:
         """Return the estimated arrival time."""
         if self.coordinator.data is None:
             return None
-
-        arrival_time_str = self._entry.data.get(CONF_ARRIVAL_TIME)
-        if not arrival_time_str:
+        target = self._get_target_time()
+        if target is None:
             return None
-
-        try:
-            parts = arrival_time_str.split(":")
-            target_hour = int(parts[0])
-            target_minute = int(parts[1]) if len(parts) > 1 else 0
-        except (ValueError, IndexError):
-            return None
-
-        now = datetime.now()
-        target = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
-        if target < now:
-            target += timedelta(days=1)
-
-        duration = self.coordinator.data.duration
-        # Apply traffic duration if available
-        if self.coordinator.data.duration_in_traffic is not None:
-            duration = self.coordinator.data.duration_in_traffic
-
-        departure = target - timedelta(seconds=duration)
-        return departure if departure > now else None
+        return target
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return additional attributes."""
         if self.coordinator.data is None:
             return None
+        duration = self.coordinator.data.duration
+        if self.coordinator.data.duration_in_traffic is not None:
+            duration = self.coordinator.data.duration_in_traffic
+        target = self._get_target_time()
+        departure = None
+        if target:
+            departure = (target - timedelta(seconds=duration)).isoformat()
         return {
             ATTR_ARRIVAL_TIME: self._entry.data.get(CONF_ARRIVAL_TIME),
-            ATTR_DURATION: self.coordinator.data.duration,
+            ATTR_DURATION: duration,
+            "required_departure": departure,
         }
 
 
@@ -290,32 +291,34 @@ class TravelTimeDepartureSensor(TravelTimeBaseSensor):
     def unique_id(self) -> str:
         return f"{self._entry.entry_id}_departure"
 
+    def _get_target_time(self) -> datetime | None:
+        """Parse the configured arrival time."""
+        arrival_time_str = self._entry.data.get(CONF_ARRIVAL_TIME)
+        if not arrival_time_str:
+            return None
+        try:
+            parts = str(arrival_time_str).split(":")
+            target_hour = int(parts[0])
+            target_minute = int(parts[1]) if len(parts) > 1 else 0
+            now = datetime.now()
+            target = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+            if target < now:
+                target += timedelta(days=1)
+            return target
+        except (ValueError, IndexError, AttributeError):
+            return None
+
     @property
     def native_value(self) -> datetime | None:
         """Return the required departure time to arrive on time."""
         if self.coordinator.data is None:
             return None
-
-        arrival_time_str = self._entry.data.get(CONF_ARRIVAL_TIME)
-        if not arrival_time_str:
+        target = self._get_target_time()
+        if target is None:
             return None
-
-        try:
-            parts = arrival_time_str.split(":")
-            target_hour = int(parts[0])
-            target_minute = int(parts[1]) if len(parts) > 1 else 0
-        except (ValueError, IndexError):
-            return None
-
-        now = datetime.now()
-        target = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
-        if target < now:
-            target += timedelta(days=1)
-
         duration = self.coordinator.data.duration
         if self.coordinator.data.duration_in_traffic is not None:
             duration = self.coordinator.data.duration_in_traffic
-
         departure = target - timedelta(seconds=duration)
         return departure
 
@@ -327,4 +330,5 @@ class TravelTimeDepartureSensor(TravelTimeBaseSensor):
         return {
             ATTR_DESTINATION: self.coordinator.data.destination,
             ATTR_DESTINATION_NAME: self._entry.data.get(CONF_DESTINATION),
+            ATTR_ARRIVAL_TIME: self._entry.data.get(CONF_ARRIVAL_TIME),
         }
