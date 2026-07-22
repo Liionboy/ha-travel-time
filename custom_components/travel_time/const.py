@@ -29,6 +29,7 @@ PROVIDER_ORS = "openrouteservice"
 PROVIDER_GOOGLE = "google"
 PROVIDER_ORS_SELFHOST = "openrouteservice_selfhost"
 PROVIDER_OSRM = "osrm"
+PROVIDER_WAZE = "waze"
 
 # Profile/mode values
 PROFILE_DRIVING_CAR = "driving-car"

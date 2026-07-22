@@ -10,7 +10,9 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/Liionboy/ha-travel-time/issues",
   "requirements": [
-    "aiohttp>=3.9.0"
+    "aiohttp>=3.9.0",
+    "pywaze>=1.0.0",
+    "httpx>=0.27.0"
   ],
-  "version": "1.5.1"
+  "version": "1.6.0"
 }

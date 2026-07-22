@@ -296,6 +296,87 @@ class GoogleMapsProvider(BaseTravelTimeProvider):
         )
 
 
+class WazeProvider(BaseTravelTimeProvider):
+    """Waze routing provider with real-time traffic data."""
+
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        origin_lat: float,
+        origin_lon: float,
+        dest_lat: float,
+        dest_lon: float,
+        mode: str,
+        region: str = "RO",
+        avoid_toll_roads: bool = False,
+        avoid_subscription_roads: bool = False,
+        avoid_ferries: bool = False,
+        realtime: bool = True,
+    ) -> None:
+        super().__init__(session, origin_lat, origin_lon, dest_lat, dest_lon, mode)
+        self._region = region
+        self._avoid_toll_roads = avoid_toll_roads
+        self._avoid_subscription_roads = avoid_subscription_roads
+        self._avoid_ferries = avoid_ferries
+        self._realtime = realtime
+
+    async def async_get_travel_time(self) -> TravelTimeResult:
+        """Get travel time from Waze."""
+        from pywaze.route_calculator import WazeRouteCalculator, WRCError
+
+        origin = f"{self._origin_lat},{self._origin_lon}"
+        destination = f"{self._dest_lat},{self._dest_lon}"
+
+        try:
+            # Create Waze client with httpx async client
+            import httpx
+            async with httpx.AsyncClient() as http_client:
+                calculator = WazeRouteCalculator(
+                    http_client=http_client,
+                    region=self._region,
+                )
+
+                routes = await calculator.calc_routes(
+                    origin,
+                    destination,
+                    vehicle_type="",
+                    avoid_toll_roads=self._avoid_toll_roads,
+                    avoid_subscription_roads=self._avoid_subscription_roads,
+                    avoid_ferries=self._avoid_ferries,
+                    real_time=self._realtime,
+                    alternatives=1,
+                )
+
+        except WRCError as err:
+            raise TravelTimeError(f"Waze error: {err}") from err
+        except Exception as err:
+            raise TravelTimeConnectionError(f"Waze connection error: {err}") from err
+
+        if not routes:
+            raise TravelTimeError("No Waze routes found")
+
+        # Get the best route (first one)
+        route = routes[0]
+        duration = route.duration  # seconds
+        distance = route.distance  # km
+        route_name = route.name
+
+        # Convert km to meters
+        distance_m = distance * 1000
+
+        origin_str = _format_coords(self._origin_lat, self._origin_lon)
+        dest_str = _format_coords(self._dest_lat, self._dest_lon)
+
+        return TravelTimeResult(
+            duration=duration,
+            duration_in_traffic=duration if self._realtime else None,
+            distance=distance_m,
+            origin=origin_str,
+            destination=dest_str,
+            route=route_name,
+        )
+
+
 class OSRMProvider(BaseTravelTimeProvider):
     """OSRM (Open Source Routing Machine) provider - free, no API key."""
 
@@ -394,5 +475,9 @@ def create_provider(
         url = base_url if base_url else OSRM_BASE_URL
         return OSRMProvider(
             session, origin_lat, origin_lon, dest_lat, dest_lon, mode, url
+        )
+    if provider == "waze":
+        return WazeProvider(
+            session, origin_lat, origin_lon, dest_lat, dest_lon, mode
         )
     raise TravelTimeError(f"Unknown provider: {provider}")

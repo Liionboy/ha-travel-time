@@ -53,11 +53,13 @@ from .const import (
     PROVIDER_ORS,
     PROVIDER_ORS_SELFHOST,
     PROVIDER_OSRM,
+    PROVIDER_WAZE,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 PROVIDERS = {
+    PROVIDER_WAZE: "Waze (real-time traffic)",
     PROVIDER_OSRM: "OSRM (free, no API key)",
     PROVIDER_ORS: "OpenRouteService (free)",
     PROVIDER_GOOGLE: "Google Maps",
@@ -125,6 +127,8 @@ class TravelTimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if provider == PROVIDER_ORS_SELFHOST:
                 return await self.async_step_ors_selfhost()
             if provider == PROVIDER_OSRM:
+                return await self.async_step_origin()
+            if provider == PROVIDER_WAZE:
                 return await self.async_step_origin()
 
             return await self.async_step_origin()
@@ -379,6 +383,8 @@ class TravelTimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         provider = self._data.get(CONF_PROVIDER, PROVIDER_ORS)
         if provider in (PROVIDER_ORS, PROVIDER_ORS_SELFHOST, PROVIDER_OSRM):
             modes = MODES_ORS
+        elif provider == PROVIDER_WAZE:
+            modes = {MODE_DRIVING: "Driving"}
         else:
             modes = MODES_GOOGLE
 
