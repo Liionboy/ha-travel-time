@@ -54,6 +54,9 @@ async def async_setup_entry(
     entities: list[SensorEntity] = [
         TravelTimeDurationSensor(coordinator, entry, name),
         TravelTimeDistanceSensor(coordinator, entry, name),
+        TravelTimeDurationInTrafficSensor(coordinator, entry, name),
+        TravelTimeOriginSensor(coordinator, entry, name),
+        TravelTimeDestinationSensor(coordinator, entry, name),
     ]
 
     # Only add arrival/departure time sensors if configured
@@ -149,6 +152,79 @@ class TravelTimeDistanceSensor(TravelTimeBaseSensor):
         if self.coordinator.data is None:
             return None
         return self.coordinator.data.distance
+
+
+class TravelTimeDurationInTrafficSensor(TravelTimeBaseSensor):
+    """Sensor for travel duration with traffic."""
+
+    _attr_name = "Duration in traffic"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+    _attr_translation_key = "duration_in_traffic"
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._entry.entry_id}_duration_in_traffic"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the duration in traffic, falling back to normal duration."""
+        if self.coordinator.data is None:
+            return None
+        if self.coordinator.data.duration_in_traffic is not None:
+            return self.coordinator.data.duration_in_traffic
+        return self.coordinator.data.duration
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return additional attributes."""
+        if self.coordinator.data is None:
+            return None
+        data = self.coordinator.data
+        return {
+            ATTR_ORIGIN: data.origin,
+            ATTR_DESTINATION: data.destination,
+        }
+
+
+class TravelTimeOriginSensor(TravelTimeBaseSensor):
+    """Sensor for origin location name."""
+
+    _attr_name = "Origin"
+    _attr_translation_key = "origin"
+    _attr_icon = "mdi:map-marker"
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._entry.entry_id}_origin"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the origin name."""
+        if self.coordinator.data is None:
+            return None
+        return self.coordinator.data.origin
+
+
+class TravelTimeDestinationSensor(TravelTimeBaseSensor):
+    """Sensor for destination location name."""
+
+    _attr_name = "Destination"
+    _attr_translation_key = "destination"
+    _attr_icon = "mdi:map-marker-check"
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._entry.entry_id}_destination"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the destination name."""
+        if self.coordinator.data is None:
+            return None
+        return self.coordinator.data.destination
 
 
 class TravelTimeArrivalSensor(TravelTimeBaseSensor):

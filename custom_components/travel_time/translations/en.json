@@ -83,6 +83,15 @@
       "distance": {
         "name": "Distance"
       },
+      "duration_in_traffic": {
+        "name": "Duration in traffic"
+      },
+      "origin": {
+        "name": "Origin"
+      },
+      "destination": {
+        "name": "Destination"
+      },
       "arrival_time": {
         "name": "Arrival Time"
       },
