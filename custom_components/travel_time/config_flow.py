@@ -99,6 +99,13 @@ class TravelTimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    @staticmethod
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> TravelTimeOptionsFlow:
+        """Create the options flow."""
+        return TravelTimeOptionsFlow(config_entry)
+
     def __init__(self) -> None:
         """Initialize the config flow."""
         self._data: dict[str, Any] = {}
@@ -417,3 +424,52 @@ class TravelTimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         )
         return self.async_show_form(step_id="reauth", data_schema=schema)
+
+
+class TravelTimeOptionsFlow(config_entries.OptionsFlow):
+    """Options flow to update arrival/departure time and update interval."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self._config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Handle options flow."""
+        if user_input is not None:
+            # Merge options into config entry data
+            new_data = {**self._config_entry.data}
+            if CONF_ARRIVAL_TIME in user_input:
+                new_data[CONF_ARRIVAL_TIME] = user_input[CONF_ARRIVAL_TIME]
+            if CONF_DEPARTURE_TIME in user_input:
+                new_data[CONF_DEPARTURE_TIME] = user_input[CONF_DEPARTURE_TIME]
+            if CONF_UPDATE_INTERVAL in user_input:
+                new_data[CONF_UPDATE_INTERVAL] = user_input[CONF_UPDATE_INTERVAL]
+            self.hass.config_entries.async_update_entry(
+                self._config_entry, data=new_data
+            )
+            await self.hass.config_entries.async_reload(
+                self._config_entry.entry_id
+            )
+            return self.async_create_entry(title="", data={})
+
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_ARRIVAL_TIME,
+                    default=self._config_entry.data.get(CONF_ARRIVAL_TIME, ""),
+                ): TimeSelector(),
+                vol.Optional(
+                    CONF_DEPARTURE_TIME,
+                    default=self._config_entry.data.get(CONF_DEPARTURE_TIME, ""),
+                ): TimeSelector(),
+                vol.Required(
+                    CONF_UPDATE_INTERVAL,
+                    default=self._config_entry.data.get(
+                        CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
+                    ),
+                ): vol.All(int, vol.Range(min=60, max=3600)),
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=schema)

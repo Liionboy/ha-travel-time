@@ -234,9 +234,16 @@ class TravelTimeArrivalSensor(TravelTimeBaseSensor):
     def unique_id(self) -> str:
         return f"{self._entry.entry_id}_arrival"
 
+    def _get_arrival_time(self) -> str | None:
+        """Get arrival time from data or options."""
+        val = self._entry.data.get(CONF_ARRIVAL_TIME)
+        if not val:
+            val = self._entry.options.get(CONF_ARRIVAL_TIME)
+        return val if val else None
+
     def _get_target_time(self) -> datetime | None:
         """Parse the configured arrival time."""
-        arrival_time_str = self._entry.data.get(CONF_ARRIVAL_TIME)
+        arrival_time_str = self._get_arrival_time()
         if not arrival_time_str:
             return None
         try:
@@ -274,7 +281,7 @@ class TravelTimeArrivalSensor(TravelTimeBaseSensor):
         if target:
             departure = (target - timedelta(seconds=duration)).isoformat()
         return {
-            ATTR_ARRIVAL_TIME: self._entry.data.get(CONF_ARRIVAL_TIME),
+            ATTR_ARRIVAL_TIME: self._get_arrival_time(),
             ATTR_DURATION: duration,
             "required_departure": departure,
         }
@@ -291,9 +298,16 @@ class TravelTimeDepartureSensor(TravelTimeBaseSensor):
     def unique_id(self) -> str:
         return f"{self._entry.entry_id}_departure"
 
+    def _get_arrival_time(self) -> str | None:
+        """Get arrival time from data or options."""
+        val = self._entry.data.get(CONF_ARRIVAL_TIME)
+        if not val:
+            val = self._entry.options.get(CONF_ARRIVAL_TIME)
+        return val if val else None
+
     def _get_target_time(self) -> datetime | None:
         """Parse the configured arrival time."""
-        arrival_time_str = self._entry.data.get(CONF_ARRIVAL_TIME)
+        arrival_time_str = self._get_arrival_time()
         if not arrival_time_str:
             return None
         try:
@@ -330,5 +344,5 @@ class TravelTimeDepartureSensor(TravelTimeBaseSensor):
         return {
             ATTR_DESTINATION: self.coordinator.data.destination,
             ATTR_DESTINATION_NAME: self._entry.data.get(CONF_DESTINATION),
-            ATTR_ARRIVAL_TIME: self._entry.data.get(CONF_ARRIVAL_TIME),
+            ATTR_ARRIVAL_TIME: self._get_arrival_time(),
         }
