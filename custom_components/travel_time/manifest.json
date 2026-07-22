@@ -1,12 +1,16 @@
 {
   "domain": "travel_time",
   "name": "Travel Time",
-  "codeowners": ["@Liionboy"],
+  "codeowners": [
+    "@Liionboy"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/Liionboy/ha-travel-time",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/Liionboy/ha-travel-time/issues",
-  "requirements": ["aiohttp>=3.9.0"],
-  "version": "1.0.0"
+  "requirements": [
+    "aiohttp>=3.9.0"
+  ],
+  "version": "1.5.1"
 }
