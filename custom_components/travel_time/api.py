@@ -328,18 +328,17 @@ class WazeProvider(BaseTravelTimeProvider):
         destination = f"{self._dest_lat},{self._dest_lon}"
 
         try:
-            # Create Waze client with httpx async client
             import httpx
             async with httpx.AsyncClient() as http_client:
                 calculator = WazeRouteCalculator(
-                    http_client=http_client,
+                    client=http_client,
                     region=self._region,
                 )
 
                 routes = await calculator.calc_routes(
                     origin,
                     destination,
-                    vehicle_type="",
+                    vehicle_type=None,
                     avoid_toll_roads=self._avoid_toll_roads,
                     avoid_subscription_roads=self._avoid_subscription_roads,
                     avoid_ferries=self._avoid_ferries,
