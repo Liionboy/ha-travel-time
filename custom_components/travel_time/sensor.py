@@ -227,8 +227,8 @@ class TravelTimeArrivalSensor(TravelTimeBaseSensor):
     """Sensor for estimated arrival time."""
 
     _attr_name = "Arrival Time"
-    _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_translation_key = "arrival_time"
+    _attr_icon = "mdi:clock-check-outline"
 
     @property
     def unique_id(self) -> str:
@@ -259,14 +259,14 @@ class TravelTimeArrivalSensor(TravelTimeBaseSensor):
             return None
 
     @property
-    def native_value(self) -> datetime | None:
-        """Return the estimated arrival time."""
+    def native_value(self) -> str | None:
+        """Return the arrival time as a readable string."""
         if self.coordinator.data is None:
             return None
         target = self._get_target_time()
         if target is None:
             return None
-        return target
+        return target.strftime("%H:%M")
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
@@ -279,7 +279,7 @@ class TravelTimeArrivalSensor(TravelTimeBaseSensor):
         target = self._get_target_time()
         departure = None
         if target:
-            departure = (target - timedelta(seconds=duration)).isoformat()
+            departure = (target - timedelta(seconds=duration)).strftime("%H:%M")
         return {
             ATTR_ARRIVAL_TIME: self._get_arrival_time(),
             ATTR_DURATION: duration,
@@ -291,8 +291,8 @@ class TravelTimeDepartureSensor(TravelTimeBaseSensor):
     """Sensor for required departure time."""
 
     _attr_name = "Departure Time"
-    _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_translation_key = "departure_time"
+    _attr_icon = "mdi:clock-start"
 
     @property
     def unique_id(self) -> str:
@@ -323,8 +323,8 @@ class TravelTimeDepartureSensor(TravelTimeBaseSensor):
             return None
 
     @property
-    def native_value(self) -> datetime | None:
-        """Return the required departure time to arrive on time."""
+    def native_value(self) -> str | None:
+        """Return the required departure time as a readable string."""
         if self.coordinator.data is None:
             return None
         target = self._get_target_time()
@@ -334,7 +334,7 @@ class TravelTimeDepartureSensor(TravelTimeBaseSensor):
         if self.coordinator.data.duration_in_traffic is not None:
             duration = self.coordinator.data.duration_in_traffic
         departure = target - timedelta(seconds=duration)
-        return departure
+        return departure.strftime("%H:%M")
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
