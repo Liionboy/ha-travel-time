@@ -356,12 +356,9 @@ class WazeProvider(BaseTravelTimeProvider):
 
         # Get the best route (first one)
         route = routes[0]
-        duration = route.duration  # seconds
-        distance = route.distance  # km
+        duration = route.duration * 60  # pywaze returns minutes, convert to seconds
+        distance = route.distance * 1000  # pywaze returns km, convert to meters
         route_name = route.name
-
-        # Convert km to meters
-        distance_m = distance * 1000
 
         origin_str = _format_coords(self._origin_lat, self._origin_lon)
         dest_str = _format_coords(self._dest_lat, self._dest_lon)
@@ -369,7 +366,7 @@ class WazeProvider(BaseTravelTimeProvider):
         return TravelTimeResult(
             duration=duration,
             duration_in_traffic=duration if self._realtime else None,
-            distance=distance_m,
+            distance=distance,
             origin=origin_str,
             destination=dest_str,
             route=route_name,
