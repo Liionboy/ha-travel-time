@@ -541,22 +541,28 @@ class TravelTimeOptionsFlow(config_entries.OptionsFlow):
             )
             return self.async_create_entry(title="", data={})
 
-        schema = vol.Schema(
-            {
-                vol.Optional(
-                    CONF_ARRIVAL_TIME,
-                    default=self._config_entry.data.get(CONF_ARRIVAL_TIME, ""),
-                ): TimeSelector(),
-                vol.Optional(
-                    CONF_DEPARTURE_TIME,
-                    default=self._config_entry.data.get(CONF_DEPARTURE_TIME, ""),
-                ): TimeSelector(),
-                vol.Required(
-                    CONF_UPDATE_INTERVAL,
-                    default=self._config_entry.data.get(
-                        CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
-                    ),
-                ): vol.All(int, vol.Range(min=60, max=3600)),
-            }
-        )
+        arrival = self._config_entry.data.get(CONF_ARRIVAL_TIME)
+        departure = self._config_entry.data.get(CONF_DEPARTURE_TIME)
+
+        schema_dict: dict[vol.Marker, Any] = {
+            vol.Required(
+                CONF_UPDATE_INTERVAL,
+                default=self._config_entry.data.get(
+                    CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
+                ),
+            ): vol.All(int, vol.Range(min=60, max=3600)),
+        }
+
+        # Only set default if a valid time value exists (not empty string)
+        if arrival and arrival != "":
+            schema_dict[vol.Optional(CONF_ARRIVAL_TIME, default=arrival)] = TimeSelector()
+        else:
+            schema_dict[vol.Optional(CONF_ARRIVAL_TIME)] = TimeSelector()
+
+        if departure and departure != "":
+            schema_dict[vol.Optional(CONF_DEPARTURE_TIME, default=departure)] = TimeSelector()
+        else:
+            schema_dict[vol.Optional(CONF_DEPARTURE_TIME)] = TimeSelector()
+
+        schema = vol.Schema(schema_dict)
         return self.async_show_form(step_id="init", data_schema=schema)
