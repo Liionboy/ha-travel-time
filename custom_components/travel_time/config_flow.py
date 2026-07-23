@@ -29,6 +29,10 @@ from .api import (
 from .const import (
     CONF_API_KEY,
     CONF_ARRIVAL_TIME,
+    CONF_AVOID_FERRIES,
+    CONF_AVOID_SUBSCRIPTION_ROADS,
+    CONF_AVOID_TOLL_ROADS,
+    CONF_BASE_COORDS,
     CONF_BASE_URL,
     CONF_DEPARTURE_TIME,
     CONF_DESTINATION,
@@ -40,7 +44,10 @@ from .const import (
     CONF_ORIGIN_LAT,
     CONF_ORIGIN_LON,
     CONF_PROVIDER,
+    CONF_REGION,
+    CONF_TIME_DELTA,
     CONF_UPDATE_INTERVAL,
+    CONF_VEHICLE_TYPE,
     DEFAULT_MODE,
     DEFAULT_NAME,
     DEFAULT_UPDATE_INTERVAL,
@@ -54,6 +61,13 @@ from .const import (
     PROVIDER_ORS_SELFHOST,
     PROVIDER_OSRM,
     PROVIDER_WAZE,
+    WAZE_REGION_AU,
+    WAZE_REGION_EU,
+    WAZE_REGION_IL,
+    WAZE_REGION_US,
+    WAZE_VEHICLE_CAR,
+    WAZE_VEHICLE_MOTORCYCLE,
+    WAZE_VEHICLE_TAXI,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -323,6 +337,8 @@ class TravelTimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._data[CONF_DEST_LAT] = coords[0]
                 self._data[CONF_DEST_LON] = coords[1]
                 self._data[CONF_DESTINATION] = destination
+                if self._data.get(CONF_PROVIDER) == PROVIDER_WAZE:
+                    return await self.async_step_waze_options()
                 return await self.async_step_options()
             errors["base"] = "invalid_location"
 
@@ -339,6 +355,70 @@ class TravelTimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
             description_placeholders={"format": "latitude, longitude (e.g. 44.4397, 26.0956)"},
         )
+
+    async def async_step_waze_options(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Step for Waze-specific options."""
+        if user_input is not None:
+            self._data.update(user_input)
+            # Parse base_coords if provided
+            if CONF_BASE_COORDS in user_input and user_input[CONF_BASE_COORDS]:
+                coords = _parse_location(user_input[CONF_BASE_COORDS])
+                if coords:
+                    self._data[CONF_BASE_COORDS] = {
+                        "latitude": coords[0],
+                        "longitude": coords[1],
+                    }
+            return await self.async_step_options()
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_VEHICLE_TYPE, default=WAZE_VEHICLE_CAR
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=[
+                            SelectOptionDict(value=WAZE_VEHICLE_CAR, label="Car"),
+                            SelectOptionDict(value=WAZE_VEHICLE_TAXI, label="Taxi"),
+                            SelectOptionDict(
+                                value=WAZE_VEHICLE_MOTORCYCLE, label="Motorcycle"
+                            ),
+                        ],
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    CONF_REGION, default=WAZE_REGION_EU
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=[
+                            SelectOptionDict(value=WAZE_REGION_EU, label="Europe"),
+                            SelectOptionDict(value=WAZE_REGION_US, label="United States"),
+                            SelectOptionDict(value=WAZE_REGION_IL, label="Israel"),
+                            SelectOptionDict(value=WAZE_REGION_AU, label="Australia"),
+                        ],
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(
+                    CONF_AVOID_TOLL_ROADS, default=False
+                ): bool,
+                vol.Optional(
+                    CONF_AVOID_SUBSCRIPTION_ROADS, default=False
+                ): bool,
+                vol.Optional(
+                    CONF_AVOID_FERRIES, default=False
+                ): bool,
+                vol.Optional(
+                    CONF_TIME_DELTA, default=0
+                ): vol.All(int, vol.Range(min=0, max=120)),
+                vol.Optional(CONF_BASE_COORDS, default=""): TextSelector(
+                    TextSelectorConfig(type=TextSelectorType.TEXT)
+                ),
+            }
+        )
+        return self.async_show_form(step_id="waze_options", data_schema=schema)
 
     async def async_step_options(
         self, user_input: dict[str, Any] | None = None

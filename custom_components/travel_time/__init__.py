@@ -12,6 +12,10 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 from .api import create_provider
 from .const import (
     CONF_API_KEY,
+    CONF_AVOID_FERRIES,
+    CONF_AVOID_SUBSCRIPTION_ROADS,
+    CONF_AVOID_TOLL_ROADS,
+    CONF_BASE_COORDS,
     CONF_BASE_URL,
     CONF_DEST_LAT,
     CONF_DEST_LON,
@@ -19,11 +23,15 @@ from .const import (
     CONF_ORIGIN_LAT,
     CONF_ORIGIN_LON,
     CONF_PROVIDER,
+    CONF_REGION,
+    CONF_TIME_DELTA,
     CONF_UPDATE_INTERVAL,
+    CONF_VEHICLE_TYPE,
     DEFAULT_MODE,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     PLATFORMS,
+    PROVIDER_WAZE,
 )
 from .coordinator import TravelTimeCoordinator
 
@@ -31,6 +39,21 @@ from .coordinator import TravelTimeCoordinator
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Travel Time from a config entry."""
     session = async_get_clientsession(hass)
+
+    # Build Waze-specific kwargs if provider is Waze
+    waze_kwargs: dict = {}
+    if entry.data[CONF_PROVIDER] == PROVIDER_WAZE:
+        waze_kwargs = {
+            "region": entry.data.get(CONF_REGION, "EU"),
+            "avoid_toll_roads": entry.data.get(CONF_AVOID_TOLL_ROADS, False),
+            "avoid_subscription_roads": entry.data.get(
+                CONF_AVOID_SUBSCRIPTION_ROADS, False
+            ),
+            "avoid_ferries": entry.data.get(CONF_AVOID_FERRIES, False),
+            "vehicle_type": entry.data.get(CONF_VEHICLE_TYPE, "car"),
+            "time_delta": entry.data.get(CONF_TIME_DELTA, 0),
+            "base_coords": entry.data.get(CONF_BASE_COORDS),
+        }
 
     provider = create_provider(
         provider=entry.data[CONF_PROVIDER],
@@ -42,6 +65,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         mode=entry.data.get(CONF_MODE, DEFAULT_MODE),
         api_key=entry.data.get(CONF_API_KEY, ""),
         base_url=entry.data.get(CONF_BASE_URL, ""),
+        **waze_kwargs,
     )
 
     interval = entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)

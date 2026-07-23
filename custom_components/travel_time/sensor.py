@@ -18,6 +18,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import TravelTimeResult
 from .const import (
+    ATTR_ALTERNATIVE_ROUTES,
     ATTR_ARRIVAL_TIME,
     ATTR_DEPARTURE_TIME,
     ATTR_DESTINATION,
@@ -28,6 +29,7 @@ from .const import (
     ATTR_ORIGIN,
     ATTR_ORIGIN_NAME,
     ATTR_ROUTE,
+    ATTR_STREET_NAMES,
     CONF_ARRIVAL_TIME,
     CONF_DEPARTURE_TIME,
     CONF_DESTINATION,
@@ -59,6 +61,7 @@ async def async_setup_entry(
         TravelTimeDestinationSensor(coordinator, entry, name),
         TravelTimeArrivalSensor(coordinator, entry, name),
         TravelTimeDepartureSensor(coordinator, entry, name),
+        TravelTimeAlternativeRoutesSensor(coordinator, entry, name),
     ]
 
     async_add_entities(entities)
@@ -125,6 +128,8 @@ class TravelTimeDurationSensor(TravelTimeBaseSensor):
             attrs[ATTR_DURATION_IN_TRAFFIC] = data.duration_in_traffic
         if data.route:
             attrs[ATTR_ROUTE] = data.route
+        if data.street_names:
+            attrs[ATTR_STREET_NAMES] = data.street_names
         return attrs
 
 
@@ -285,6 +290,47 @@ class TravelTimeArrivalSensor(TravelTimeBaseSensor):
             ATTR_DURATION: duration,
             "required_departure": departure,
         }
+
+
+class TravelTimeAlternativeRoutesSensor(TravelTimeBaseSensor):
+    """Sensor for alternative routes (Waze only)."""
+
+    _attr_name = "Alternative Routes"
+    _attr_translation_key = "alternative_routes"
+    _attr_icon = "mdi:routes"
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._entry.entry_id}_alternative_routes"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the number of alternative routes."""
+        if self.coordinator.data is None:
+            return None
+        if self.coordinator.data.alternative_routes is None:
+            return 0
+        return len(self.coordinator.data.alternative_routes)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return alternative routes details."""
+        if self.coordinator.data is None:
+            return None
+        if self.coordinator.data.alternative_routes is None:
+            return None
+        routes_list: list[dict[str, Any]] = []
+        for alt in self.coordinator.data.alternative_routes:
+            route_info: dict[str, Any] = {
+                ATTR_DURATION: alt.duration,
+                ATTR_DISTANCE: alt.distance,
+            }
+            if alt.name:
+                route_info[ATTR_ROUTE] = alt.name
+            if alt.street_names:
+                route_info[ATTR_STREET_NAMES] = alt.street_names
+            routes_list.append(route_info)
+        return {ATTR_ALTERNATIVE_ROUTES: routes_list}
 
 
 class TravelTimeDepartureSensor(TravelTimeBaseSensor):

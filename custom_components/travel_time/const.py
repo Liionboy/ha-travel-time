@@ -24,6 +24,26 @@ CONF_DEST_LON = "dest_lon"
 CONF_ORIGIN_ENTITY_ID = "origin_entity_id"
 CONF_DEST_ENTITY_ID = "dest_entity_id"
 
+# Waze-specific config keys
+CONF_AVOID_TOLL_ROADS = "avoid_toll_roads"
+CONF_AVOID_SUBSCRIPTION_ROADS = "avoid_subscription_roads"
+CONF_AVOID_FERRIES = "avoid_ferries"
+CONF_REGION = "region"
+CONF_VEHICLE_TYPE = "vehicle_type"
+CONF_TIME_DELTA = "time_delta"
+CONF_BASE_COORDS = "base_coords"
+
+# Waze region values
+WAZE_REGION_EU = "EU"
+WAZE_REGION_US = "US"
+WAZE_REGION_IL = "IL"
+WAZE_REGION_AU = "AU"
+
+# Waze vehicle types
+WAZE_VEHICLE_CAR = "car"
+WAZE_VEHICLE_TAXI = "taxi"
+WAZE_VEHICLE_MOTORCYCLE = "motorcycle"
+
 # Provider values
 PROVIDER_ORS = "openrouteservice"
 PROVIDER_GOOGLE = "google"
@@ -79,3 +99,7 @@ ATTR_DEPARTURE_TIME = "depart_time"
 ATTR_ROUTE = "route"
 ATTR_ORIGIN_NAME = "origin_name"
 ATTR_DESTINATION_NAME = "destination_name"
+ATTR_STREET_NAMES = "street_names"
+ATTR_ALTERNATIVE_ROUTES = "alternative_routes"
+ATTR_WAZE_REGION = "waze_region"
+ATTR_WAZE_VEHICLE_TYPE = "waze_vehicle_type"

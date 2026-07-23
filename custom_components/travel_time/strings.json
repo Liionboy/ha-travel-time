@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Travel Time Setup",
-        "description": "Choose a routing provider and give your route a name.\n\n**OSRM** is free and requires no API key.\n**OpenRouteService** requires a free API key from openrouteservice.org.\n**Google Maps** requires a Google Cloud API key with Directions API enabled.",
+        "description": "Choose a routing provider and give your route a name.\n\n**Waze** provides real-time traffic data with alternative routes.\n**OSRM** is free and requires no API key.\n**OpenRouteService** requires a free API key from openrouteservice.org.\n**Google Maps** requires a Google Cloud API key with Directions API enabled.",
         "data": {
           "name": "Route Name",
           "provider": "Routing Provider"
@@ -45,6 +45,19 @@
           "destination": "Destination (lat, lon)"
         }
       },
+      "waze_options": {
+        "title": "Waze Options",
+        "description": "Configure Waze-specific routing options.\n\n**Vehicle Type** affects routing and ETAs.\n**Region** determines which Waze server to use.\n**Time Delta** calculates the route as if you were leaving in X minutes.\n**Base Coordinates** overrides the Waze map region (advanced).",
+        "data": {
+          "vehicle_type": "Vehicle Type",
+          "region": "Region",
+          "avoid_toll_roads": "Avoid Toll Roads",
+          "avoid_subscription_roads": "Avoid Subscription Roads",
+          "avoid_ferries": "Avoid Ferries",
+          "time_delta": "Time Delta (minutes)",
+          "base_coords": "Base Coordinates (optional)"
+        }
+      },
       "options": {
         "title": "Travel Options",
         "description": "Configure travel mode and optional arrival/departure times.",
@@ -59,7 +72,7 @@
         "title": "Update API Key",
         "description": "Your API key is no longer valid. Please enter a new one.",
         "data": {
-          "api_key": "New API Key"
+          "api_key": "API Key"
         }
       }
     },
@@ -97,6 +110,9 @@
       },
       "departure_time": {
         "name": "Departure Time"
+      },
+      "alternative_routes": {
+        "name": "Alternative Routes"
       }
     }
   }

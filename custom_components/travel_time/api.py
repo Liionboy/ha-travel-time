@@ -41,6 +41,16 @@ class TravelTimeConnectionError(TravelTimeError):
 
 
 @dataclass(slots=True)
+class AlternativeRoute:
+    """An alternative route with duration and distance."""
+
+    duration: float  # seconds
+    distance: float  # meters
+    name: str | None
+    street_names: list[str]
+
+
+@dataclass(slots=True)
 class TravelTimeResult:
     """Result from a travel time API call."""
 
@@ -50,6 +60,8 @@ class TravelTimeResult:
     origin: str
     destination: str
     route: str | None
+    street_names: list[str] | None = None
+    alternative_routes: list[AlternativeRoute] | None = None
 
 
 # Map integration modes to ORS profiles
@@ -299,6 +311,13 @@ class GoogleMapsProvider(BaseTravelTimeProvider):
 class WazeProvider(BaseTravelTimeProvider):
     """Waze routing provider with real-time traffic data."""
 
+    # Map vehicle type strings to pywaze values
+    _VEHICLE_TYPE_MAP = {
+        "car": None,
+        "taxi": "TAXI",
+        "motorcycle": "MOTORCYCLE",
+    }
+
     def __init__(
         self,
         session: aiohttp.ClientSession,
@@ -312,6 +331,10 @@ class WazeProvider(BaseTravelTimeProvider):
         avoid_subscription_roads: bool = False,
         avoid_ferries: bool = False,
         realtime: bool = True,
+        vehicle_type: str = "car",
+        alternatives: int = 3,
+        time_delta: int = 0,
+        base_coords: tuple[float, float] | None = None,
     ) -> None:
         super().__init__(session, origin_lat, origin_lon, dest_lat, dest_lon, mode)
         self._region = region
@@ -319,13 +342,19 @@ class WazeProvider(BaseTravelTimeProvider):
         self._avoid_subscription_roads = avoid_subscription_roads
         self._avoid_ferries = avoid_ferries
         self._realtime = realtime
+        self._vehicle_type = vehicle_type
+        self._alternatives = alternatives
+        self._time_delta = time_delta
+        self._base_coords = base_coords
 
     async def async_get_travel_time(self) -> TravelTimeResult:
-        """Get travel time from Waze."""
+        """Get travel time from Waze with alternative routes."""
         from pywaze.route_calculator import WazeRouteCalculator, WRCError
 
         origin = f"{self._origin_lat},{self._origin_lon}"
         destination = f"{self._dest_lat},{self._dest_lon}"
+
+        pywaze_vehicle = self._VEHICLE_TYPE_MAP.get(self._vehicle_type)
 
         try:
             import httpx
@@ -338,12 +367,14 @@ class WazeProvider(BaseTravelTimeProvider):
                 routes = await calculator.calc_routes(
                     origin,
                     destination,
-                    vehicle_type=None,
+                    vehicle_type=pywaze_vehicle,
                     avoid_toll_roads=self._avoid_toll_roads,
                     avoid_subscription_roads=self._avoid_subscription_roads,
                     avoid_ferries=self._avoid_ferries,
                     real_time=self._realtime,
-                    alternatives=1,
+                    alternatives=self._alternatives,
+                    time_delta=self._time_delta,
+                    base_coords=self._base_coords,
                 )
 
         except WRCError as err:
@@ -355,13 +386,24 @@ class WazeProvider(BaseTravelTimeProvider):
             raise TravelTimeError("No Waze routes found")
 
         # Get the best route (first one)
-        route = routes[0]
-        duration = route.duration * 60  # pywaze returns minutes, convert to seconds
-        distance = route.distance * 1000  # pywaze returns km, convert to meters
-        route_name = route.name
+        best = routes[0]
+        duration = best.duration * 60  # pywaze returns minutes, convert to seconds
+        distance = best.distance * 1000  # pywaze returns km, convert to meters
 
         origin_str = _format_coords(self._origin_lat, self._origin_lon)
         dest_str = _format_coords(self._dest_lat, self._dest_lon)
+
+        # Build alternative routes list (skip the first/best route)
+        alt_routes: list[AlternativeRoute] = []
+        for alt in routes[1:]:
+            alt_routes.append(
+                AlternativeRoute(
+                    duration=alt.duration * 60,
+                    distance=alt.distance * 1000,
+                    name=alt.name,
+                    street_names=list(alt.street_names) if alt.street_names else [],
+                )
+            )
 
         return TravelTimeResult(
             duration=duration,
@@ -369,7 +411,9 @@ class WazeProvider(BaseTravelTimeProvider):
             distance=distance,
             origin=origin_str,
             destination=dest_str,
-            route=route_name,
+            route=best.name,
+            street_names=list(best.street_names) if best.street_names else [],
+            alternative_routes=alt_routes if alt_routes else None,
         )
 
 
@@ -456,6 +500,15 @@ def create_provider(
     mode: str,
     api_key: str = "",
     base_url: str = "",
+    # Waze-specific kwargs
+    region: str = "EU",
+    avoid_toll_roads: bool = False,
+    avoid_subscription_roads: bool = False,
+    avoid_ferries: bool = False,
+    vehicle_type: str = "car",
+    alternatives: int = 3,
+    time_delta: int = 0,
+    base_coords: tuple[float, float] | None = None,
 ) -> BaseTravelTimeProvider:
     """Create a travel time provider instance."""
     if provider == "openrouteservice" or provider == "openrouteservice_selfhost":
@@ -474,6 +527,19 @@ def create_provider(
         )
     if provider == "waze":
         return WazeProvider(
-            session, origin_lat, origin_lon, dest_lat, dest_lon, mode
+            session,
+            origin_lat,
+            origin_lon,
+            dest_lat,
+            dest_lon,
+            mode,
+            region=region,
+            avoid_toll_roads=avoid_toll_roads,
+            avoid_subscription_roads=avoid_subscription_roads,
+            avoid_ferries=avoid_ferries,
+            vehicle_type=vehicle_type,
+            alternatives=alternatives,
+            time_delta=time_delta,
+            base_coords=base_coords,
         )
     raise TravelTimeError(f"Unknown provider: {provider}")
