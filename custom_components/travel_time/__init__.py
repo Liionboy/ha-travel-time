@@ -43,6 +43,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Build Waze-specific kwargs if provider is Waze
     waze_kwargs: dict = {}
     if entry.data[CONF_PROVIDER] == PROVIDER_WAZE:
+        # Convert base_coords to tuple for pywaze (handles dict from config_flow)
+        raw_coords = entry.data.get(CONF_BASE_COORDS)
+        base_coords = None
+        if isinstance(raw_coords, dict) and raw_coords:
+            base_coords = (
+                raw_coords.get("latitude", 0),
+                raw_coords.get("longitude", 0),
+            )
+        elif isinstance(raw_coords, str) and "," in raw_coords:
+            # Handle legacy string format
+            try:
+                parts = raw_coords.split(",")
+                base_coords = (float(parts[0].strip()), float(parts[1].strip()))
+            except (ValueError, IndexError):
+                base_coords = None
+
         waze_kwargs = {
             "region": entry.data.get(CONF_REGION, "EU"),
             "avoid_toll_roads": entry.data.get(CONF_AVOID_TOLL_ROADS, False),
@@ -52,7 +68,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "avoid_ferries": entry.data.get(CONF_AVOID_FERRIES, False),
             "vehicle_type": entry.data.get(CONF_VEHICLE_TYPE, "car"),
             "time_delta": entry.data.get(CONF_TIME_DELTA, 0),
-            "base_coords": entry.data.get(CONF_BASE_COORDS),
+            "base_coords": base_coords,
         }
 
     provider = create_provider(
