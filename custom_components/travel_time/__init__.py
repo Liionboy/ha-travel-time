@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+import httpx
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -39,10 +40,15 @@ from .coordinator import TravelTimeCoordinator
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Travel Time from a config entry."""
     session = async_get_clientsession(hass)
+    waze_http_client: httpx.AsyncClient | None = None
 
     # Build Waze-specific kwargs if provider is Waze
     waze_kwargs: dict = {}
     if entry.data[CONF_PROVIDER] == PROVIDER_WAZE:
+        # httpx builds its SSL context synchronously. Create it in Home
+        # Assistant's executor, then reuse the client for every Waze refresh.
+        waze_http_client = await hass.async_add_executor_job(httpx.AsyncClient)
+
         # Convert base_coords to tuple for pywaze (handles dict from config_flow)
         raw_coords = entry.data.get(CONF_BASE_COORDS)
         base_coords = None
@@ -81,6 +87,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         mode=entry.data.get(CONF_MODE, DEFAULT_MODE),
         api_key=entry.data.get(CONF_API_KEY, ""),
         base_url=entry.data.get(CONF_BASE_URL, ""),
+        waze_http_client=waze_http_client,
         **waze_kwargs,
     )
 
@@ -99,7 +106,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     try:
         await coordinator.async_config_entry_first_refresh()
     except UpdateFailed:
+        await provider.async_close()
         return False
+    except Exception:
+        await provider.async_close()
+        raise
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -110,7 +121,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a Travel Time config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id, None)
+        coordinator = hass.data[DOMAIN].pop(entry.entry_id, None)
+        if coordinator is not None:
+            await coordinator.provider.async_close()
     return unload_ok
 
 

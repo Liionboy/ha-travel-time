@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Any
 
 import aiohttp
+import httpx
 
 from .const import (
     GOOGLE_DIRECTIONS_URL,
@@ -140,6 +141,9 @@ class BaseTravelTimeProvider(ABC):
     @abstractmethod
     async def async_get_travel_time(self) -> TravelTimeResult:
         """Get travel time between origin and destination."""
+
+    async def async_close(self) -> None:
+        """Release provider-specific resources."""
 
 
 class OpenRouteServiceProvider(BaseTravelTimeProvider):
@@ -335,6 +339,7 @@ class WazeProvider(BaseTravelTimeProvider):
         alternatives: int = 3,
         time_delta: int = 0,
         base_coords: tuple[float, float] | None = None,
+        http_client: httpx.AsyncClient | None = None,
     ) -> None:
         super().__init__(session, origin_lat, origin_lon, dest_lat, dest_lon, mode)
         self._region = region
@@ -346,6 +351,7 @@ class WazeProvider(BaseTravelTimeProvider):
         self._alternatives = alternatives
         self._time_delta = time_delta
         self._base_coords = base_coords
+        self._http_client = http_client
 
     async def async_get_travel_time(self) -> TravelTimeResult:
         """Get travel time from Waze with alternative routes."""
@@ -357,25 +363,26 @@ class WazeProvider(BaseTravelTimeProvider):
         pywaze_vehicle = self._VEHICLE_TYPE_MAP.get(self._vehicle_type)
 
         try:
-            import httpx
-            async with httpx.AsyncClient() as http_client:
-                calculator = WazeRouteCalculator(
-                    client=http_client,
-                    region=self._region,
-                )
+            if self._http_client is None:
+                raise TravelTimeError("Waze HTTP client is not initialized")
 
-                routes = await calculator.calc_routes(
-                    origin,
-                    destination,
-                    vehicle_type=pywaze_vehicle,
-                    avoid_toll_roads=self._avoid_toll_roads,
-                    avoid_subscription_roads=self._avoid_subscription_roads,
-                    avoid_ferries=self._avoid_ferries,
-                    real_time=self._realtime,
-                    alternatives=self._alternatives,
-                    time_delta=self._time_delta,
-                    base_coords=self._base_coords,
-                )
+            calculator = WazeRouteCalculator(
+                client=self._http_client,
+                region=self._region,
+            )
+
+            routes = await calculator.calc_routes(
+                origin,
+                destination,
+                vehicle_type=pywaze_vehicle,
+                avoid_toll_roads=self._avoid_toll_roads,
+                avoid_subscription_roads=self._avoid_subscription_roads,
+                avoid_ferries=self._avoid_ferries,
+                real_time=self._realtime,
+                alternatives=self._alternatives,
+                time_delta=self._time_delta,
+                base_coords=self._base_coords,
+            )
 
         except WRCError as err:
             raise TravelTimeError(f"Waze error: {err}") from err
@@ -415,6 +422,12 @@ class WazeProvider(BaseTravelTimeProvider):
             street_names=list(best.street_names) if best.street_names else [],
             alternative_routes=alt_routes if alt_routes else None,
         )
+
+    async def async_close(self) -> None:
+        """Close the reusable Waze HTTP client."""
+        if self._http_client is not None:
+            await self._http_client.aclose()
+            self._http_client = None
 
 
 class OSRMProvider(BaseTravelTimeProvider):
@@ -509,6 +522,7 @@ def create_provider(
     alternatives: int = 3,
     time_delta: int = 0,
     base_coords: tuple[float, float] | None = None,
+    waze_http_client: httpx.AsyncClient | None = None,
 ) -> BaseTravelTimeProvider:
     """Create a travel time provider instance."""
     if provider == "openrouteservice" or provider == "openrouteservice_selfhost":
@@ -541,5 +555,6 @@ def create_provider(
             alternatives=alternatives,
             time_delta=time_delta,
             base_coords=base_coords,
+            http_client=waze_http_client,
         )
     raise TravelTimeError(f"Unknown provider: {provider}")
